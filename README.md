@@ -7,9 +7,9 @@
 ## Student Information
 | Field | Details |
 | :--- | :--- |
-| **Student Name** | [Your Full Name] |
-| **Roll Number** | [Your Roll Number] |
-| **Section** | [Your Section] |
+| **Student Name** | KAINAT |
+| **Roll Number** |70176544 |
+| **Section** | c |
 | **GitHub Repository** | https://github.com/[YourUsername]/AI101-ML-Assignment-[YourRollNo] |
 
 ## Attempted Tasks (Graded — One per Pool)
