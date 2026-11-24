@@ -1,0 +1,160 @@
+\documentclass[10pt,twocolumn,a4paper]{IEEEtran}
+\usepackage[utf8]{inputenc}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{amsmath,amssymb}
+\usepackage{url}
+\usepackage{hyperref}
+
+\addtolength{\topmargin}{-0.35in}
+\addtolength{\textheight}{0.7in}
+\addtolength{\oddsidemargin}{-0.15in}
+\addtolength{\evensidemargin}{-0.15in}
+\addtolength{\textwidth}{0.3in}
+
+\setlength{\textfloatsep}{4pt plus 1pt minus 1pt}
+\setlength{\floatsep}{4pt plus 1pt minus 1pt}
+\setlength{\intextsep}{4pt plus 1pt minus 1pt}
+\setlength{\abovecaptionskip}{2pt}
+\setlength{\belowcaptionskip}{1pt}
+
+\title{\vspace{-0.3cm}Task B3: Predicting Star Ratings of E-Commerce Clothing Reviews\vspace{-0.2cm}}
+\author{
+    \IEEEauthorblockN{KAINAT \quad Roll No. 70176544 \quad | \quad Section C}
+    \IEEEauthorblockA{
+        Department of Intelligent Systems, The University of Lahore \quad | \quad AI-101 Intro to AI (Instructor: Dr. Muhammad Awais) \\
+        Repository: \url{https://github.com/70176544-sketch/AI101-ML-Assignment-70176544}
+    }
+}
+
+\begin{document}
+\maketitle
+
+\section{Introduction}
+Automated star-rating prediction from customer feedback enables e-commerce platforms to monitor product satisfaction, detect quality defects early, and audit review authenticity. We combined free-text reviews with structured product and reviewer metadata via a leakage-free \texttt{ColumnTransformer} pipeline across three classifiers (Multinomial Logistic Regression, Linear SVC, and Random Forest) with unweighted and class-balanced training[cite: 10, 12]. Class-balanced Logistic Regression achieved the best 5-class Macro-F1 of $0.4736$ ($0.6313$ Weighted-F1), while re-framing into 3 sentiment tiers boosted Macro-F1 to $0.6369$ ($81.19\%$ accuracy)[cite: 12].
+
+\section{Problem Statement}
+Given a multimodal record $x = (x_{\text{num}}, x_{\text{cat}}, x_{\text{text}})$ comprising numeric engagement metrics, categorical garment taxonomy, and unstructured review text, the task is to learn an ordinal multi-class classifier $f: x \mapsto y \in \{1, 2, 3, 4, 5\}$ predicting the star rating[cite: 12]. Because 5-star reviews dominate ($55.4\%$), Macro-F1 is the primary metric alongside Weighted-F1, per-class recall, and Ordinal MAE ($\frac{1}{N}\sum |\hat{y}_i - y_i|$)[cite: 12]. To prevent target leakage, \texttt{Recommended IND} was strictly excluded because customers submit it simultaneously with the rating, making it unavailable at prediction time[cite: 12].
+
+\section{Dataset Used}
+We used the Women's E-Commerce Clothing Reviews dataset [1] from Kaggle (\texttt{nicapotato/womens-ecommerce-clothing-reviews}), containing $23,486$ anonymized reviews[cite: 12]. Features include \texttt{Title}, \texttt{Review Text}, \texttt{Age}, \texttt{Positive Feedback Count}, and product categories (\texttt{Division}, \texttt{Department}, \texttt{Class})[cite: 12]. During cleaning, $845$ rows with missing \texttt{Review Text} were dropped ($22,641$ retained), \texttt{Title} and \texttt{Review Text} were concatenated, missing categories were filled as ``Unknown,'' and \texttt{Recommended IND} was removed[cite: 12].
+
+\section{Dataset Statistics}
+Table~\ref{tab:stats} summarizes the cleaned dataset and splits[cite: 17]. Figure~\ref{fig:eda} illustrates the skew toward 5-star ratings, character lengths per rating, age distribution (mean $43.28$ yrs), and mean rating by department[cite: 12].
+
+\begin{table}[h]
+\centering
+\caption{Dataset statistics for Task B3.}
+\label{tab:stats}
+\footnotesize
+\begin{tabular}{@{}ll@{}}
+\toprule
+\textbf{Property} & \textbf{Value} \\ \midrule
+Samples (after cleaning) & 22,641 (845 missing text dropped) \\
+Features (num. / cat. / text) & 3 / 3 / 1 (concatenated title + text) \\
+TF-IDF vocabulary / median len. & 15,000 n-grams (1--2) / 319 chars \\
+Target / Class counts (1 to 5) & Ordinal 1--5 / 821, 1549, 2823, 4908, 12540 \\
+Missing values (post-cleaning) & 0.0\% \\
+Train / val / test split (70/15/15) & 15,848 / 3,396 / 3,397 \\ \bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\linewidth,height=3.6cm,keepaspectratio]{figures/b3_eda_plots.png}
+\caption{EDA summary: rating skew toward 5 stars, character length by rating, reviewer age distribution, and mean rating across departments.}
+\label{fig:eda}
+\end{figure}
+
+\section{Methodology}
+\subsection{Learning Setting}
+This is a supervised 5-class ordinal classification task[cite: 12]. We engineered \texttt{review\_length} and $\log(1 + \text{Positive Feedback Count})$ alongside \texttt{Age}, one-hot encoded product categories, and extracted $15,000$ unigram/bigram TF-IDF features[cite: 12]. Three model families were evaluated with and without \texttt{class\_weight='balanced'}: \textbf{Multinomial Logistic Regression}, \textbf{Linear SVC}, and \textbf{Random Forest}[cite: 12].
+
+\subsection{Data Split Approach}
+After cleaning and dropping \texttt{Recommended IND}, data was split via stratified $70/15/15$ train/validation/test partitions ($15,848 / 3,396 / 3,397$) with \texttt{random\_state=42}[cite: 12, 15]. Imputers, scalers, encoders, and TF-IDF vectorizers were placed inside a \texttt{ColumnTransformer} fitted strictly on the training split to avoid leakage[cite: 10, 15].
+
+\subsection{Parameter Settings}
+Table~\ref{tab:params} lists searched hyperparameters and selected values[cite: 1, 17].
+
+\begin{table}[h]
+\centering
+\caption{Hyperparameter search and selected settings.}
+\label{tab:params}
+\footnotesize
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Model} & \textbf{Search Space / Setup} & \textbf{Selected} \\ \midrule
+Multinomial LogReg & $C \in \{0.1, 0.5, 1.0, 2.0\}$, $\text{iter}=1000$ & $C=2.0$ (Val Macro-F1: $0.4290$) \\
+Linear SVC & $C \in \{0.5, 1.0\}$, $\text{weight} \in \{\text{None}, \text{bal.}\}$ & $C=0.5$, balanced \\
+Random Forest & $\text{n\_est}=150$, $\text{depth} \in \{15, 25\}$ & $\text{n\_est}=150$, $\text{depth}=25$ \\ \bottomrule
+\end{tabular}%
+}
+\end{table}
+
+\section{Results and Analysis}
+\subsection{Results}
+Table~\ref{tab:results} compares all six models on the test set ($n=3,397$), and Table~\ref{tab:ablation} reports the mandatory feature ablation study[cite: 10, 12]. Figure~\ref{fig:cm} shows the $5 \times 5$ confusion matrix for Balanced Logistic Regression[cite: 12].
+
+\begin{table}[h]
+\centering
+\caption{Test-set comparison ($n=3,397$). Best values in bold.}
+\label{tab:results}
+\footnotesize
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{@{}lccccc@{}}
+\toprule
+\textbf{Model} & \textbf{Acc.} & \textbf{Macro-F1} & \textbf{W-F1} & \textbf{MAE} & \textbf{Recall (1 / 2 / 3 / 4 / 5)} \\ \midrule
+LogReg (Unweighted) & \textbf{0.6420} & 0.4199 & 0.6128 & 0.4642 & .171 / .168 / .401 / .336 / .905 \\
+LogReg (Balanced) & 0.6226 & \textbf{0.4736} & \textbf{0.6313} & 0.4663 & .398 / .328 / .441 / .463 / .777 \\
+LinearSVC (Unweighted) & 0.6373 & 0.4177 & 0.6080 & 0.4681 & .195 / .203 / .347 / .319 / .910 \\
+LinearSVC (Balanced) & 0.6306 & 0.4476 & 0.6232 & \textbf{0.4598} & .276 / .310 / .422 / .357 / .847 \\
+RandomForest (Unw.) & 0.5558 & 0.1494 & 0.3999 & 0.8066 & .000 / .000 / .017 / .000 / 1.00 \\
+RandomForest (Bal.) & 0.6082 & 0.4166 & 0.5880 & 0.5175 & .301 / .237 / .309 / .307 / .860 \\ \bottomrule
+\end{tabular}%
+}
+\end{table}
+
+\begin{table}[h]
+\centering
+\caption{Feature ablation study using Balanced Logistic Regression.}
+\label{tab:ablation}
+\footnotesize
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+\textbf{Feature Set} & \textbf{Acc.} & \textbf{Macro-F1} & \textbf{W-F1} & \textbf{Ordinal MAE} \\ \midrule
+Structured Only & 0.2779 & 0.1981 & 0.3192 & 1.4698 \\
+Text Only & 0.6200 & 0.4638 & 0.6288 & 0.4692 \\
+Combined (Struct + Text) & \textbf{0.6226} & \textbf{0.4736} & \textbf{0.6313} & \textbf{0.4663} \\ \bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.75\linewidth,height=3.1cm,keepaspectratio]{figures/b3_confusion_matrix.png}
+\caption{$5 \times 5$ confusion matrix for Balanced Logistic Regression on the test set.}
+\label{fig:cm}
+\end{figure}
+
+\subsection{Analysis}
+\textbf{Class Weighting and Adjacent Confusion:} Unweighted models collapse toward 5-star predictions (unweighted Random Forest gets $0.1494$ Macro-F1). Balanced class weighting raises Logistic Regression Macro-F1 from $0.4199$ to $0.4736$ and more than doubles 1-star recall ($0.171 \rightarrow 0.398$). Figure~\ref{fig:cm} confirms that errors occur primarily between adjacent ratings (4 vs.\ 5 and 3 vs.\ 4), reflecting label subjectivity rather than pure model failure since reviewers expressing positive sentiment often assign 4 or 5 stars inconsistently[cite: 12].
+
+\textbf{Ablation and 3-Class Framing:} Structured metadata alone yields weak performance ($\text{Macro-F1}=0.1981$, $\text{MAE}=1.4698$), whereas TF-IDF text reaches $0.4638$ Macro-F1; combining both improves every metric ($\text{Macro-F1}=0.4736$, $\text{MAE}=0.4663$). Re-framing into 3 business classes---Negative (1--2), Neutral (3), Positive (4--5)---raises accuracy to $81.19\%$, Macro-F1 to $0.6369$, and Weighted-F1 to $0.8231$, offering clearer triage utility for e-commerce teams[cite: 12].
+
+\textbf{Error Analysis:} Misclassified test examples illustrate boundary ambiguity: (1) a 3-star Bottoms review (\textit{``Prob good if you're curvy...''}) predicted as 4 stars due to conditional praise; (2) a 4-star Jackets review (\textit{``Cute jacket but low quality... started piling''}) predicted as 3 stars due to fabric complaints; and (3) a 4-star Tops review (\textit{``Nice and versatile... soft material''}) predicted as 5 stars because its phrasing mirrors 5-star reviews[cite: 12].
+
+\section{Conclusion}
+Class-balanced Multinomial Logistic Regression combining TF-IDF n-grams with structured metadata achieved the highest 5-class Macro-F1 ($0.4736$) and competitive ordinal error ($\text{MAE}=0.4663$). Review text provides the primary predictive signal while metadata adds consistent gains, and 3-class sentiment grouping boosts accuracy to $81.19\%$. Future work could fine-tune a pretrained transformer with ordinal loss to better separate subtle 4-star and 5-star nuances.
+
+\newpage
+\section*{AI Use Disclosure}
+I used Google Gemini (November 2026) for structuring the \texttt{ColumnTransformer} pipeline, ablation code, and LaTeX formatting[cite: 18]. The following parts were generated or substantially assisted by AI: notebook pipeline boilerplate and LaTeX report layout[cite: 18]. I verified this content by executing all cells on Google Colab, inspecting all printed metrics and figures, and checking the implementation against scikit-learn documentation[cite: 18]. All experiments, results and analysis in this report were produced and checked by me, and I take full responsibility for this work[cite: 18].
+
+\begin{thebibliography}{9}
+\bibitem{clothing_reviews}
+N. Brooks, ``Women's E-Commerce Clothing Reviews,'' Kaggle Repository, 2018. \url{https://www.kaggle.com/datasets/nicapotato/womens-ecommerce-clothing-reviews}.
+\bibitem{sklearn}
+F. Pedregosa et al., ``Scikit-learn: Machine learning in Python,'' \textit{Journal of Machine Learning Research}, vol. 12, pp. 2825--2830, 2011.
+\end{thebibliography}
+
+\end{document}

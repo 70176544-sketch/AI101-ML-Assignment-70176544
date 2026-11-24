@@ -1,0 +1,134 @@
+\documentclass[10pt,twocolumn,a4paper]{IEEEtran}
+\usepackage[utf8]{inputenc}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{amsmath,amssymb}
+\usepackage{url}
+\usepackage{hyperref}
+
+\title{Task A1: Breast Cancer Diagnosis from Cell-Nucleus Measurements}
+\author{
+    \IEEEauthorblockN{KAINAT \quad Roll No. 70176544 \quad | \quad Section C}
+    \IEEEauthorblockA{
+        Department of Intelligent Systems, The University of Lahore \\
+        AI-101 Introduction to Artificial Intelligence \quad | \quad Instructor: Dr. Muhammad Awais, AI Architect \\
+        Repository: \url{https://github.com/70176544-sketch/AI101-ML-Assignment-70176544}
+    }
+}
+
+\begin{document}
+\maketitle
+
+\section{Introduction}
+Early and accurate differentiation between malignant and benign breast masses is critical for clinical oncology, as timely intervention drastically improves patient survival while avoiding unnecessary invasive biopsies. In this task, we trained and tuned three supervised classifiers---Logistic Regression, Support Vector Machine (SVM) with an RBF kernel, and Random Forest---on digitized fine-needle aspirate (FNA) nucleus measurements using leakage-free cross-validation pipelines. Random Forest and RBF-SVM tied for the highest test-set performance with an F1-score of $0.9630$ ($97.37\%$ accuracy), while lowering the Random Forest decision threshold to $0.26$ raised malignant recall to $0.9524$ at a modest precision cost of $0.0698$.
+
+\section{Problem Statement}
+Given a feature vector $x \in \mathbb{R}^{30}$ representing morphological measurements of cell nuclei in a breast mass FNA image, the objective is to learn a binary classification mapping $f: x \mapsto y \in \{0, 1\}$, where $y=1$ denotes a malignant tumor and $y=0$ denotes a benign mass. Because missing a malignant tumor (false negative) carries severe life-threatening clinical consequences compared to a false alarm (false positive), primary evaluation focuses on malignant-class Recall, F1-score, and ROC-AUC under moderate class imbalance ($37.26\%$ malignant).
+
+\section{Dataset Used}
+We used the Breast Cancer Wisconsin (Diagnostic) dataset [1], loaded via \texttt{scikit-learn} (UCI ML Repository ID 17). The dataset comprises 569 samples collected from digitized images of FNA breast mass slides. For ten cell-nucleus characteristics (radius, texture, perimeter, area, smoothness, compactness, concavity, concave points, symmetry, and fractal dimension), the mean, standard error, and ``worst'' (mean of the three largest values) are recorded, yielding 30 continuous numeric predictors. The dataset contains zero missing values and no duplicate records; no rows were removed during cleaning, and target labels were inverted so that $1$ represents the positive malignant class.
+
+\section{Dataset Statistics}
+Table~\ref{tab:stats} summarizes the dataset properties and stratified split counts. Figure~\ref{fig:eda} illustrates the class distribution and inter-feature correlation structure, highlighting severe multicollinearity among geometric size attributes (radius, perimeter, and area).
+
+\begin{table}[h]
+\centering
+\caption{Dataset statistics for Task A1.}
+\label{tab:stats}
+\begin{tabular}{@{}ll@{}}
+\toprule
+\textbf{Property} & \textbf{Value} \\ \midrule
+Samples (after cleaning) & 569 \\
+Features (numeric / cat. / text) & 30 / 0 / 0 \\
+Target classes & Binary: Benign (0), Malignant (1) \\
+Class distribution & 357 Benign (62.7\%), 212 Malignant (37.3\%) \\
+Missing values (\%) & 0.0\% \\
+Train / validation / test split & 455 (80\%) / 5-fold CV / 114 (20\%) \\ \bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.48\linewidth]{figures/a1_class_dist.png}
+\hfill
+\includegraphics[width=0.48\linewidth]{figures/a1_corr_heatmap.png}
+\caption{EDA results: (left) class distribution showing 357 benign and 212 malignant samples; (right) feature correlation heatmap revealing strong collinearity ($|r|>0.95$) among radius, perimeter, and area features.}
+\label{fig:eda}
+\end{figure}
+
+\section{Methodology}
+\subsection{Learning Setting}
+This is a supervised binary classification task. Three diverse classifiers were selected: (1) \textbf{Logistic Regression} as an interpretable linear baseline; (2) \textbf{SVM (RBF)} to capture non-linear decision boundaries in high-dimensional space; and (3) \textbf{Random Forest} as an ensemble tree method robust to feature scale and collinearity. Each model was wrapped inside a \texttt{scikit-learn} \texttt{Pipeline} with \texttt{StandardScaler} so scaling parameters were fitted exclusively on training folds.
+
+\subsection{Data Split Approach}
+The dataset was partitioned using a stratified $80/20$ train/test split ($455$ training and $114$ test instances) with a fixed random seed (\texttt{random\_state=42}) for reproducibility. Hyperparameter tuning used 5-fold \texttt{StratifiedKFold} cross-validation optimizing malignant F1-score strictly on the training split. The test set remained completely untouched until final evaluation.
+
+\subsection{Parameter Settings}
+Table~\ref{tab:params} lists the hyperparameter search spaces and optimal values chosen via 5-fold cross-validation.
+
+\begin{table}[h]
+\centering
+\caption{Hyperparameter settings and 5-fold CV F1-scores.}
+\label{tab:params}
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{@{}llll@{}}
+\toprule
+\textbf{Model} & \textbf{Search Space} & \textbf{Selected} & \textbf{CV F1 (Mean $\pm$ SD)} \\ \midrule
+Logistic Reg. & $C \in \{0.01, 0.1, 1, 10\}$ & $C=1$ & $0.9640 \pm 0.0207$ \\
+SVM (RBF) & $C \in \{0.1, 1, 10\}$, $\gamma \in \{\text{scale}, 0.01, 0.001\}$ & $C=10, \gamma=\text{scale}$ & $0.9674 \pm 0.0114$ \\
+Random Forest & $\text{n\_est} \in \{100, 200\}$, $\text{depth} \in \{\text{None}, 5, 10\}$ & $\text{n\_est}=100, \text{depth}=5$ & $0.9553 \pm 0.0284$ \\ \bottomrule
+\end{tabular}%
+}
+\end{table}
+
+\section{Results and Analysis}
+\subsection{Results}
+Table~\ref{tab:results} presents the final evaluation on the held-out test set ($n=114$). Figure~\ref{fig:results} displays the ROC curves across all models and the confusion matrix for the selected Random Forest model.
+
+\begin{table}[h]
+\centering
+\caption{Test-set results ($n=114$). Best values in bold.}
+\label{tab:results}
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{@{}lccccc@{}}
+\toprule
+\textbf{Model} & \textbf{Acc.} & \textbf{Prec.} & \textbf{Recall} & \textbf{F1 (Mal.)} & \textbf{ROC-AUC} \\ \midrule
+Logistic Regression & 0.9649 & 0.9750 & \textbf{0.9286} & 0.9512 & \textbf{0.9960} \\
+SVM (RBF) & \textbf{0.9737} & \textbf{1.0000} & \textbf{0.9286} & \textbf{0.9630} & 0.9927 \\
+Random Forest & \textbf{0.9737} & \textbf{1.0000} & \textbf{0.9286} & \textbf{0.9630} & 0.9950 \\ \bottomrule
+\end{tabular}%
+}
+\end{table}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.48\linewidth]{figures/a1_roc_curves.png}
+\hfill
+\includegraphics[width=0.48\linewidth]{figures/a1_confusion_matrix.png}
+\caption{Test-set evaluation: (left) ROC curves confirming high separability ($\text{AUC} > 0.99$); (right) Random Forest confusion matrix at default $0.50$ threshold (72 TN, 0 FP, 3 FN, 39 TP).}
+\label{fig:results}
+\end{figure}
+
+\subsection{Analysis}
+\textbf{Model Comparison and Metric Suitability:} Random Forest and RBF-SVM achieved the strongest overall test performance ($\text{F1}=0.9630$, $0$ false positives, $3$ false negatives), with Random Forest achieving a higher ROC-AUC ($0.9950$ vs.\ $0.9927$). Accuracy alone is misleading here because the dataset is imbalanced ($62.7\%$ benign); a trivial classifier predicting ``benign'' for every patient would obtain $62.7\%$ accuracy while missing $100\%$ of cancers.
+
+\textbf{Threshold Tuning Study:} At the default $0.50$ probability threshold, Random Forest yielded $0.9286$ recall ($3$ missed malignancies) and $1.0000$ precision. Lowering the decision threshold to $0.26$ increased malignant recall to $0.9524$ (reducing false negatives from $3$ to $2$), while precision decreased by $0.0698$ to $0.9302$ (introducing $3$ false positives out of $72$ benign cases). In medical screening, trading three benign follow-ups to catch an additional malignant tumor is clinically favorable.
+
+\textbf{Feature Importance and Redundancy:} Inspection of standardized Logistic Regression coefficients identified \texttt{worst texture} ($1.4341$), \texttt{radius error} ($1.2333$), \texttt{worst symmetry} ($1.0613$), \texttt{mean concave points} ($0.9528$), and \texttt{worst concavity} ($0.9114$) as the strongest predictors. Removing 7 highly correlated features ($|r| > 0.95$: \texttt{mean/worst perimeter}, \texttt{mean/worst area}, \texttt{perimeter/area error}, and \texttt{worst radius}) caused Random Forest test F1 to drop from $0.9630$ to $0.9250$ ($\text{Accuracy}=0.9474$, $\text{ROC-AUC}=0.9921$), indicating that while size metrics are correlated, tree ensembles still extract complementary split thresholds from them.
+
+\textbf{Limitations:} The modest sample size ($N=569$) means a single misclassified test instance shifts recall by $\approx 2.4\%$, and external validation on multi-center biopsy cohorts is needed before clinical deployment.
+
+\section{Conclusion}
+Tree ensembles (Random Forest) and non-linear kernels (RBF-SVM) achieved $97.37\%$ accuracy and $0.9630$ F1-score on breast mass diagnosis, while threshold tuning to $0.26$ successfully boosted malignant recall above $0.95$. Dropping collinear geometric features slightly degraded ensemble performance, showing that tree splits benefit from multiple scale representations. Next, we would evaluate probability calibration (Platt scaling) and nested cross-validation to stabilize threshold selection on small medical datasets.
+
+\section*{AI Use Disclosure}
+I used Google Gemini (November 2026) for structuring the boilerplate code for data preprocessing, cross-validation pipelines, and plotting, as well as formatting the LaTeX report structure. The following parts were generated or substantially assisted by AI: initial notebook pipeline structure and LaTeX layout. I verified this content by running every cell from top to bottom on Google Colab, inspecting all printed metrics and figures, and checking the logic against scikit-learn documentation and course lecture slides. All experiments, results and analysis in this report were produced and checked by me, and I take full responsibility for this work.
+
+\begin{thebibliography}{9}
+\bibitem{uci_bc}
+W. N. Street, W. H. Wolberg, and O. L. Mangasarian, ``Nuclear feature extraction for breast tumor diagnosis,'' \textit{IS\&T/SPIE International Symposium on Electronic Imaging}, vol. 1905, pp. 861--870, 1993. UCI ML Repository: \url{https://archive.ics.uci.edu/dataset/17/breast+cancer+wisconsin+diagnostic}.
+\bibitem{sklearn}
+F. Pedregosa et al., ``Scikit-learn: Machine learning in Python,'' \textit{Journal of Machine Learning Research}, vol. 12, pp. 2825--2830, 2011.
+\end{thebibliography}
+
+\end{document}
