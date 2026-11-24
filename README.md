@@ -7,10 +7,10 @@
 ## Student Information
 | Field | Details |
 | :--- | :--- |
-| **Student Name** | KAINAT |
-| **Roll Number** |70176544 |
-| **Section** | c |
-| **GitHub Repository** | https://github.com/[YourUsername]/AI101-ML-Assignment-[YourRollNo] |
+| **Student Name** | Kainat |
+| **Roll Number** | 70176544 |
+| **Section** | C |
+| **GitHub Repository** | https://github.com/70176544-sketch/AI101-ML-Assignment-70176544 |
 
 ## Attempted Tasks (Graded — One per Pool)
 | Pool | Task ID | Task Title | Notebook | Report PDF |
