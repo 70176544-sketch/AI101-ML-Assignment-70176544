@@ -7,10 +7,17 @@
 ## Student Information
 | Field | Details |
 | :--- | :--- |
+<<<<<<< Updated upstream
 | **Student Name** | Kainat |
 | **Roll Number** | 70176544 |
 | **Section** | C |
 | **GitHub Repository** | https://github.com/70176544-sketch/AI101-ML-Assignment-70176544 |
+=======
+| **Student Name** | KAINAT |
+| **Roll Number** |70176544 |
+| **Section** | c |
+| **GitHub Repository** |https://github.com/70176544-sketch/ML_dataset_70176544 |
+>>>>>>> Stashed changes
 
 ## Attempted Tasks (Graded — One per Pool)
 | Pool | Task ID | Task Title | Notebook | Report PDF |
